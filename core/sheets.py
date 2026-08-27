@@ -9,14 +9,15 @@ from datetime import datetime
 from core.models import SHEETS
 
 SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive",
+    "https://googleapis.com",
+    "https://googleapis.com",
 ]
 
 
 @st.cache_resource(show_spinner=False)
 def get_gspread_client():
-    creds_dict = dict(st.secrets["gcp_service_account"])
+    # CORREÇÃO: Usa .to_dict() para garantir a conversão correta do formato Streamlit Secrets para o Google
+    creds_dict = st.secrets["gcp_service_account"].to_dict()
     creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
     return gspread.authorize(creds)
 
