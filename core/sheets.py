@@ -19,11 +19,16 @@ SCOPES = [
 def get_gspread_client():
     creds_dict = dict(st.secrets["gcp_service_account"])
 
-    # Corrige as quebras de linha da chave privada
-    private_key = creds_dict["private_key"]
+    private_key = str(creds_dict["private_key"])
 
-    if "\\n" in private_key:
-        private_key = private_key.replace("\\n", "\n")
+    # Corrige diferentes formas de armazenamento das quebras de linha
+    private_key = private_key.replace("\\\\n", "\n")
+    private_key = private_key.replace("\\n", "\n")
+    private_key = private_key.replace("\r\n", "\n")
+    private_key = private_key.replace("\r", "\n")
+
+    # Remove espaços/quebras extras no início e fim
+    private_key = private_key.strip()
 
     creds_dict["private_key"] = private_key
 
@@ -106,14 +111,12 @@ def read_df(sheet_name: str) -> pd.DataFrame:
                 errors="coerce"
             ).astype("Int64")
 
-        for money_col in ("valor",):
+        if "valor" in df.columns:
 
-            if money_col in df.columns:
-
-                df[money_col] = pd.to_numeric(
-                    df[money_col],
-                    errors="coerce"
-                ).fillna(0.0)
+            df["valor"] = pd.to_numeric(
+                df["valor"],
+                errors="coerce"
+            ).fillna(0.0)
 
     return df
 
