@@ -6,6 +6,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
+
 from core.models import SHEETS
 
 
@@ -15,22 +16,96 @@ SCOPES = [
 ]
 
 
+def _normalizar_private_key(key):
+    """Normaliza a private_key recebida pelo Streamlit."""
+
+    if key is None:
+        raise ValueError("private_key não encontrada nos Secrets.")
+
+    key = str(key).strip()
+
+    # Remove aspas que possam ter sido armazenadas como parte do valor
+    if len(key) >= 2:
+        if key.startswith('"') and key.endswith('"'):
+            key = key[1:-1]
+
+        elif key.startswith("'") and key.endswith("'"):
+            key = key[1:-1]
+
+    # Converte diferentes representações de quebra de linha
+    key = key.replace("\\\\r\\\\n", "\n")
+    key = key.replace("\\\\n", "\n")
+    key = key.replace("\\r\\n", "\n")
+    key = key.replace("\\n", "\n")
+    key = key.replace("\r\n", "\n")
+    key = key.replace("\r", "\n")
+
+    # Garante que o PEM começa e termina corretamente
+    begin = "-----BEGIN PRIVATE KEY-----"
+    end = "-----END PRIVATE KEY-----"
+
+    begin_pos = key.find(begin)
+    end_pos = key.find(end)
+
+    if begin_pos == -1:
+        raise ValueError(
+            "A private_key não contém -----BEGIN PRIVATE KEY-----. "
+            "Verifique o Secrets."
+        )
+
+    if end_pos == -1:
+        raise ValueError(
+            "A private_key não contém -----END PRIVATE KEY-----. "
+            "Verifique o Secrets."
+        )
+
+    # Remove qualquer coisa antes/depois do PEM
+    key = key[begin_pos:end_pos + len(end)]
+
+    # Normaliza espaços nas linhas
+    linhas = [
+        linha.strip()
+        for linha in key.split("\n")
+        if linha.strip()
+    ]
+
+    key = "\n".join(linhas)
+
+    # Confere novamente
+    if not key.startswith(begin):
+        raise ValueError("Início da private_key inválido.")
+
+    if not key.endswith(end):
+        raise ValueError("Final da private_key inválido.")
+
+    return key + "\n"
+
+
 @st.cache_resource(show_spinner=False)
 def get_gspread_client():
-    creds_dict = dict(st.secrets["gcp_service_account"])
 
-    private_key = str(creds_dict["private_key"])
+    if "gcp_service_account" not in st.secrets:
+        raise ValueError(
+            "A seção [gcp_service_account] não foi encontrada "
+            "no Streamlit Secrets."
+        )
 
-    # Corrige diferentes formas de armazenamento das quebras de linha
-    private_key = private_key.replace("\\\\n", "\n")
-    private_key = private_key.replace("\\n", "\n")
-    private_key = private_key.replace("\r\n", "\n")
-    private_key = private_key.replace("\r", "\n")
+    creds_dict = dict(
+        st.secrets["gcp_service_account"]
+    )
 
-    # Remove espaços/quebras extras no início e fim
-    private_key = private_key.strip()
+    if "private_key" not in creds_dict:
+        raise ValueError(
+            "private_key não encontrada em [gcp_service_account]."
+        )
 
-    creds_dict["private_key"] = private_key
+    # Corrige automaticamente o formato da chave
+    creds_dict["private_key"] = _normalizar_private_key(
+        creds_dict["private_key"]
+    )
+
+    # Remove valores que não fazem parte da credencial
+    creds_dict.pop("spreadsheet_name", None)
 
     creds = Credentials.from_service_account_info(
         creds_dict,
@@ -42,6 +117,7 @@ def get_gspread_client():
 
 @st.cache_resource(show_spinner=False)
 def get_spreadsheet():
+
     gc = get_gspread_client()
 
     name = st.secrets.get(
@@ -50,9 +126,11 @@ def get_spreadsheet():
     )
 
     try:
+
         sh = gc.open(name)
 
     except gspread.SpreadsheetNotFound:
+
         sh = gc.create(name)
 
     ensure_worksheets(sh)
@@ -61,7 +139,11 @@ def get_spreadsheet():
 
 
 def ensure_worksheets(sh):
-    existing = [ws.title for ws in sh.worksheets()]
+
+    existing = [
+        ws.title
+        for ws in sh.worksheets()
+    ]
 
     for sheet_name, cols in SHEETS.items():
 
@@ -82,15 +164,22 @@ def ensure_worksheets(sh):
             header = ws.row_values(1)
 
             if header != cols:
-                ws.update("A1", [cols])
+
+                ws.update(
+                    "A1",
+                    [cols]
+                )
 
 
 def _worksheet(sheet_name: str):
+
     sh = get_spreadsheet()
+
     return sh.worksheet(sheet_name)
 
 
 def read_df(sheet_name: str) -> pd.DataFrame:
+
     ws = _worksheet(sheet_name)
 
     records = ws.get_all_records()
@@ -124,15 +213,19 @@ def read_df(sheet_name: str) -> pd.DataFrame:
 def next_id(df: pd.DataFrame) -> int:
 
     if df.empty or df["id"].isna().all():
+
         return 1
 
-    return int(df["id"].max()) + 1
+    return int(
+        df["id"].max()
+    ) + 1
 
 
 def append_row(
     sheet_name: str,
     row: dict
 ):
+
     ws = _worksheet(sheet_name)
 
     cols = SHEETS[sheet_name]
@@ -153,7 +246,9 @@ def update_row(
 
     cols = SHEETS[sheet_name]
 
-    id_col_idx = cols.index("id") + 1
+    id_col_idx = (
+        cols.index("id") + 1
+    )
 
     cell = ws.find(
         str(row_id),
@@ -161,9 +256,12 @@ def update_row(
     )
 
     if cell is None:
+
         return False
 
-    row_values = ws.row_values(cell.row)
+    row_values = ws.row_values(
+        cell.row
+    )
 
     row_values += [
         ""
@@ -175,7 +273,10 @@ def update_row(
     for key, value in updates.items():
 
         if key in cols:
-            row_values[cols.index(key)] = value
+
+            row_values[
+                cols.index(key)
+            ] = value
 
     ws.update(
         f"A{cell.row}",
@@ -194,7 +295,9 @@ def delete_row(
 
     cols = SHEETS[sheet_name]
 
-    id_col_idx = cols.index("id") + 1
+    id_col_idx = (
+        cols.index("id") + 1
+    )
 
     cell = ws.find(
         str(row_id),
@@ -203,7 +306,9 @@ def delete_row(
 
     if cell is not None:
 
-        ws.delete_rows(cell.row)
+        ws.delete_rows(
+            cell.row
+        )
 
         return True
 
