@@ -17,7 +17,15 @@ SCOPES = [
 
 @st.cache_resource(show_spinner=False)
 def get_gspread_client():
-    creds_dict = st.secrets["gcp_service_account"].to_dict()
+    creds_dict = dict(st.secrets["gcp_service_account"])
+
+    # Corrige as quebras de linha da chave privada
+    private_key = creds_dict["private_key"]
+
+    if "\\n" in private_key:
+        private_key = private_key.replace("\\n", "\n")
+
+    creds_dict["private_key"] = private_key
 
     creds = Credentials.from_service_account_info(
         creds_dict,
@@ -38,6 +46,7 @@ def get_spreadsheet():
 
     try:
         sh = gc.open(name)
+
     except gspread.SpreadsheetNotFound:
         sh = gc.create(name)
 
@@ -52,6 +61,7 @@ def ensure_worksheets(sh):
     for sheet_name, cols in SHEETS.items():
 
         if sheet_name not in existing:
+
             ws = sh.add_worksheet(
                 title=sheet_name,
                 rows=1000,
@@ -61,6 +71,7 @@ def ensure_worksheets(sh):
             ws.append_row(cols)
 
         else:
+
             ws = sh.worksheet(sheet_name)
 
             header = ws.row_values(1)
@@ -81,11 +92,15 @@ def read_df(sheet_name: str) -> pd.DataFrame:
 
     cols = SHEETS[sheet_name]
 
-    df = pd.DataFrame(records, columns=cols)
+    df = pd.DataFrame(
+        records,
+        columns=cols
+    )
 
     if not df.empty:
 
         if "id" in df.columns:
+
             df["id"] = pd.to_numeric(
                 df["id"],
                 errors="coerce"
@@ -94,6 +109,7 @@ def read_df(sheet_name: str) -> pd.DataFrame:
         for money_col in ("valor",):
 
             if money_col in df.columns:
+
                 df[money_col] = pd.to_numeric(
                     df[money_col],
                     errors="coerce"
@@ -110,8 +126,10 @@ def next_id(df: pd.DataFrame) -> int:
     return int(df["id"].max()) + 1
 
 
-def append_row(sheet_name: str, row: dict):
-
+def append_row(
+    sheet_name: str,
+    row: dict
+):
     ws = _worksheet(sheet_name)
 
     cols = SHEETS[sheet_name]
@@ -146,13 +164,15 @@ def update_row(
 
     row_values += [
         ""
-        for _ in range(len(cols) - len(row_values))
+        for _ in range(
+            len(cols) - len(row_values)
+        )
     ]
 
-    for k, v in updates.items():
+    for key, value in updates.items():
 
-        if k in cols:
-            row_values[cols.index(k)] = v
+        if key in cols:
+            row_values[cols.index(key)] = value
 
     ws.update(
         f"A{cell.row}",
