@@ -77,10 +77,22 @@ def next_id(df: pd.DataFrame) -> int:
     return int(df["id"].max()) + 1
 
 
+def _sanitize(v):
+    """Converte tipos numpy/pandas (Int64, numpy.int64, NaN, etc.) para tipos
+    nativos do Python, exigidos pelo serializador JSON usado pela API do Sheets."""
+    if v is None or pd.isna(v):
+        return ""
+    if isinstance(v, (pd.Timestamp,)):
+        return str(v)
+    if hasattr(v, "item"):  # numpy/pandas scalar
+        return v.item()
+    return v
+
+
 def append_row(sheet_name: str, row: dict):
     ws = _worksheet(sheet_name)
     cols = SHEETS[sheet_name]
-    ws.append_row([row.get(c, "") for c in cols])
+    ws.append_row([_sanitize(row.get(c, "")) for c in cols])
 
 
 def update_row(sheet_name: str, row_id: int, updates: dict):
@@ -94,7 +106,7 @@ def update_row(sheet_name: str, row_id: int, updates: dict):
     row_values += [""] * (len(cols) - len(row_values))
     for k, v in updates.items():
         if k in cols:
-            row_values[cols.index(k)] = v
+            row_values[cols.index(k)] = _sanitize(v)
     ws.update(f"A{cell.row}", [row_values])
     return True
 
