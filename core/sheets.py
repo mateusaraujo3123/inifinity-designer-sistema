@@ -1,5 +1,6 @@
 """Camada de acesso ao Google Sheets, usado como banco de dados do sistema."""
 
+import time
 import streamlit as st
 import pandas as pd
 import gspread
@@ -13,6 +14,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
+
+CACHE_TTL_SEGUNDOS = 45
 
 
 @st.cache_resource(show_spinner=False)
@@ -55,10 +58,7 @@ def _worksheet(sheet_name: str):
     return sh.worksheet(sheet_name)
 
 
-@st.cache_data(ttl=20, show_spinner=False)
-def read_df(sheet_name: str) -> pd.DataFrame:
-    """Cacheado por 20s: evita repetir a mesma leitura várias vezes na mesma
-    tela (ex: vários projetos/abas chamando a mesma aba) e em reruns seguidos."""
+def _build_df(sheet_name: str) -> pd.DataFrame:
     ws = _worksheet(sheet_name)
     records = ws.get_all_records()
     cols = SHEETS[sheet_name]
@@ -69,6 +69,22 @@ def read_df(sheet_name: str) -> pd.DataFrame:
         for money_col in ("valor",):
             if money_col in df.columns:
                 df[money_col] = pd.to_numeric(df[money_col], errors="coerce").fillna(0.0)
+    return df
+
+
+def read_df(sheet_name: str) -> pd.DataFrame:
+    """Cache manual por aba (guardado na sessão do usuário), válido por
+    CACHE_TTL_SEGUNDOS. Diferente de st.cache_data, permite invalidar só a
+    aba que mudou em vez de limpar tudo a cada pequena edição — essencial
+    para não estourar a cota de leitura da API do Google a cada clique."""
+    cache_key = f"_df_{sheet_name}"
+    ts_key = f"_df_ts_{sheet_name}"
+    agora = time.time()
+    if cache_key in st.session_state and (agora - st.session_state.get(ts_key, 0)) < CACHE_TTL_SEGUNDOS:
+        return st.session_state[cache_key]
+    df = _build_df(sheet_name)
+    st.session_state[cache_key] = df
+    st.session_state[ts_key] = agora
     return df
 
 
@@ -90,6 +106,19 @@ def _sanitize(v):
     return v
 
 
+def _row_number_for_id(sheet_name: str, row_id: int):
+    """Acha a linha (1-indexada, já contando o cabeçalho) de um id usando o
+    DataFrame já em cache, sem gastar mais uma leitura da API (ws.find())."""
+    df = read_df(sheet_name)
+    if df.empty:
+        return None, None
+    matches = df.index[df["id"] == row_id].tolist()
+    if not matches:
+        return None, None
+    idx = matches[0]
+    return idx + 2, df.iloc[idx].to_dict()
+
+
 def append_row(sheet_name: str, row: dict):
     ws = _worksheet(sheet_name)
     cols = SHEETS[sheet_name]
@@ -97,30 +126,23 @@ def append_row(sheet_name: str, row: dict):
 
 
 def update_row(sheet_name: str, row_id: int, updates: dict):
+    row_number, current = _row_number_for_id(sheet_name, row_id)
+    if row_number is None:
+        return False
     ws = _worksheet(sheet_name)
     cols = SHEETS[sheet_name]
-    id_col_idx = cols.index("id") + 1
-    cell = ws.find(str(row_id), in_column=id_col_idx)
-    if cell is None:
-        return False
-    row_values = ws.row_values(cell.row)
-    row_values += [""] * (len(cols) - len(row_values))
-    for k, v in updates.items():
-        if k in cols:
-            row_values[cols.index(k)] = _sanitize(v)
-    ws.update(f"A{cell.row}", [row_values])
+    row_values = [_sanitize(updates[c]) if c in updates else _sanitize(current.get(c, "")) for c in cols]
+    ws.update(f"A{row_number}", [row_values])
     return True
 
 
 def delete_row(sheet_name: str, row_id: int):
+    row_number, _ = _row_number_for_id(sheet_name, row_id)
+    if row_number is None:
+        return False
     ws = _worksheet(sheet_name)
-    cols = SHEETS[sheet_name]
-    id_col_idx = cols.index("id") + 1
-    cell = ws.find(str(row_id), in_column=id_col_idx)
-    if cell is not None:
-        ws.delete_rows(cell.row)
-        return True
-    return False
+    ws.delete_rows(row_number)
+    return True
 
 
 def now_data_hora():
@@ -128,8 +150,17 @@ def now_data_hora():
     return n.strftime("%d/%m/%Y"), n.strftime("%H:%M:%S")
 
 
-def clear_cache():
-    st.cache_data.clear()
+def clear_cache(*sheet_names: str):
+    """Sem argumentos: limpa tudo (uso raro). Com nomes de abas: limpa só
+    aquelas — evita forçar releitura de tudo a cada pequena edição."""
+    if not sheet_names:
+        for k in list(st.session_state.keys()):
+            if k.startswith("_df_"):
+                del st.session_state[k]
+        return
+    for nome in sheet_names:
+        st.session_state.pop(f"_df_{nome}", None)
+        st.session_state.pop(f"_df_ts_{nome}", None)
 
 
 def get_config() -> dict:
@@ -156,4 +187,4 @@ def save_config(cfg: dict):
         append_row("Configuracoes", row)
     else:
         update_row("Configuracoes", 1, row)
-    clear_cache()
+    clear_cache("Configuracoes")

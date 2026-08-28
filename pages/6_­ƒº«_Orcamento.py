@@ -114,7 +114,7 @@ with tab2:
                 "valor_hora_usado": calc["valor_hora"], "valor_bruto": round(valor_bruto, 2),
                 "valor_final": valor_final, "data": data, "hora": hora, "observacoes": obs,
             })
-            clear_cache()
+            clear_cache("Orcamentos")
             st.success("Orçamento salvo no histórico!")
 
         if st.button("🧹 Limpar itens"):

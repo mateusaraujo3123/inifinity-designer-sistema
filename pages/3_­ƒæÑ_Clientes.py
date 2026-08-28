@@ -24,7 +24,7 @@ with st.expander("➕ Cadastrar novo cliente"):
                     "id": next_id(clientes), "nome": nome.strip(),
                     "contato": contato, "observacoes": obs, "data_cadastro": data,
                 })
-                clear_cache()
+                clear_cache("Clientes")
                 st.success("Cliente cadastrado!")
                 st.rerun()
 
@@ -78,7 +78,7 @@ with tabs[0]:
                     "nome_projeto": nome_proj.strip(), "descricao": desc_proj, "data_criacao": data,
                     "finalizado": "Não",
                 })
-                clear_cache()
+                clear_cache("Projetos")
                 st.rerun()
 
     if projetos_c.empty:
@@ -98,12 +98,12 @@ with tabs[0]:
                     cF1.success("Projeto finalizado")
                     if cF2.button("↩️ Reabrir projeto", key=f"reabrir_{proj['id']}"):
                         update_row("Projetos", proj["id"], {"finalizado": "Não"})
-                        clear_cache()
+                        clear_cache("Projetos")
                         st.rerun()
                 else:
                     if cF2.button("✅ Finalizar projeto", key=f"finalizar_{proj['id']}"):
                         update_row("Projetos", proj["id"], {"finalizado": "Sim"})
-                        clear_cache()
+                        clear_cache("Projetos")
                         st.rerun()
 
                 artes = read_df("Artes")
@@ -136,7 +136,7 @@ with tabs[0]:
                                 "anotacoes": anotacoes,
                                 "entregue": "Não", "desistencia": "Não",
                             })
-                            clear_cache()
+                            clear_cache("Artes")
                             st.rerun()
 
                 if not artes_p.empty:
@@ -155,24 +155,24 @@ with tabs[0]:
                         if novo_valor != arte["valor"]:
                             if cC.button("💾", key=f"savearte_{arte['id']}"):
                                 update_row("Artes", arte["id"], {"valor": novo_valor})
-                                clear_cache()
+                                clear_cache("Artes")
                                 st.rerun()
 
                         entregue_novo = cD.checkbox("Entregue", value=entregue, key=f"entregue_{arte['id']}")
                         if entregue_novo != entregue:
                             update_row("Artes", arte["id"], {"entregue": "Sim" if entregue_novo else "Não"})
-                            clear_cache()
+                            clear_cache("Artes")
                             st.rerun()
 
                         desistiu_novo = cE.checkbox("Desistência", value=desistiu, key=f"desiste_{arte['id']}")
                         if desistiu_novo != desistiu:
                             update_row("Artes", arte["id"], {"desistencia": "Sim" if desistiu_novo else "Não"})
-                            clear_cache()
+                            clear_cache("Artes")
                             st.rerun()
 
                         if cF.button("🗑️", key=f"delarte_{arte['id']}"):
                             delete_row("Artes", arte["id"])
-                            clear_cache()
+                            clear_cache("Artes")
                             st.rerun()
                         ficha_pdf = gerar_ficha_pedido_pdf(
                             arte.to_dict(), nomes[cliente_id], proj["nome_projeto"],
@@ -204,7 +204,7 @@ with tabs[1]:
                 "projeto_id": proj_ref if proj_ref else "", "valor": valor_pag,
                 "forma_pagamento": forma, "data": data, "hora": hora, "observacoes": obs_pag,
             })
-            clear_cache()
+            clear_cache("Pagamentos")
             st.success("Pagamento registrado e abatido do saldo devedor!")
             st.rerun()
 
@@ -226,7 +226,7 @@ with tabs[2]:
                 "id": next_id(descontos), "cliente_id": cliente_id, "projeto_id": "",
                 "valor": valor_desc, "motivo": motivo, "data": data, "hora": hora,
             })
-            clear_cache()
+            clear_cache("Descontos")
             st.success("Desconto aplicado!")
             st.rerun()
 
