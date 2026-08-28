@@ -5,6 +5,7 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from core.models import SHEETS
 
@@ -123,7 +124,7 @@ def delete_row(sheet_name: str, row_id: int):
 
 
 def now_data_hora():
-    n = datetime.now()
+    n = datetime.now(ZoneInfo("America/Recife"))
     return n.strftime("%d/%m/%Y"), n.strftime("%H:%M:%S")
 
 
