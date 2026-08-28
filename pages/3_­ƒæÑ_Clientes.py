@@ -76,6 +76,7 @@ with tabs[0]:
                 append_row("Projetos", {
                     "id": next_id(projetos), "cliente_id": cliente_id,
                     "nome_projeto": nome_proj.strip(), "descricao": desc_proj, "data_criacao": data,
+                    "finalizado": "Não",
                 })
                 clear_cache()
                 st.rerun()
@@ -89,7 +90,22 @@ with tabs[0]:
         prog_opcoes = programas_df["nome"].tolist() if not programas_df.empty else []
 
         for _, proj in projetos_c.iterrows():
-            with st.expander(f"📁 {proj['nome_projeto']} — {proj['descricao'] or 'sem descrição'}"):
+            finalizado = str(proj.get("finalizado", "")).strip().lower() in ("sim", "true", "1")
+            titulo_proj = f"{'✅' if finalizado else '📁'} {proj['nome_projeto']} — {proj['descricao'] or 'sem descrição'}"
+            with st.expander(titulo_proj):
+                cF1, cF2 = st.columns([3, 1])
+                if finalizado:
+                    cF1.success("Projeto finalizado")
+                    if cF2.button("↩️ Reabrir projeto", key=f"reabrir_{proj['id']}"):
+                        update_row("Projetos", proj["id"], {"finalizado": "Não"})
+                        clear_cache()
+                        st.rerun()
+                else:
+                    if cF2.button("✅ Finalizar projeto", key=f"finalizar_{proj['id']}"):
+                        update_row("Projetos", proj["id"], {"finalizado": "Sim"})
+                        clear_cache()
+                        st.rerun()
+
                 artes = read_df("Artes")
                 artes_p = artes[artes["projeto_id"].astype(str) == str(proj["id"])]
 
@@ -118,6 +134,7 @@ with tabs[0]:
                                 "programas": ", ".join(progs_sel),
                                 "prazo_entrega": prazo.strftime("%d/%m/%Y"),
                                 "anotacoes": anotacoes,
+                                "entregue": "Não", "desistencia": "Não",
                             })
                             clear_cache()
                             st.rerun()
@@ -125,8 +142,11 @@ with tabs[0]:
                 if not artes_p.empty:
                     st.markdown("**Itens deste projeto**")
                     for _, arte in artes_p.iterrows():
-                        cA, cB, cC, cD, cE = st.columns([3, 2, 2, 1, 1])
-                        cA.write(arte["descricao"])
+                        entregue = str(arte.get("entregue", "")).strip().lower() in ("sim", "true", "1")
+                        desistiu = str(arte.get("desistencia", "")).strip().lower() in ("sim", "true", "1")
+
+                        cA, cB, cC, cD, cE, cF, cG = st.columns([3, 2, 2, 1, 1, 1, 1])
+                        cA.write(("~~" + arte["descricao"] + "~~") if desistiu else arte["descricao"])
                         cB.write(cat_dict.get(arte["categoria_id"], "-"))
                         novo_valor = cC.number_input(
                             "Valor", value=float(arte["valor"]), key=f"editval_{arte['id']}",
@@ -137,7 +157,20 @@ with tabs[0]:
                                 update_row("Artes", arte["id"], {"valor": novo_valor})
                                 clear_cache()
                                 st.rerun()
-                        if cD.button("🗑️", key=f"delarte_{arte['id']}"):
+
+                        entregue_novo = cD.checkbox("Entregue", value=entregue, key=f"entregue_{arte['id']}")
+                        if entregue_novo != entregue:
+                            update_row("Artes", arte["id"], {"entregue": "Sim" if entregue_novo else "Não"})
+                            clear_cache()
+                            st.rerun()
+
+                        desistiu_novo = cE.checkbox("Desistência", value=desistiu, key=f"desiste_{arte['id']}")
+                        if desistiu_novo != desistiu:
+                            update_row("Artes", arte["id"], {"desistencia": "Sim" if desistiu_novo else "Não"})
+                            clear_cache()
+                            st.rerun()
+
+                        if cF.button("🗑️", key=f"delarte_{arte['id']}"):
                             delete_row("Artes", arte["id"])
                             clear_cache()
                             st.rerun()
@@ -145,7 +178,7 @@ with tabs[0]:
                             arte.to_dict(), nomes[cliente_id], proj["nome_projeto"],
                             cat_dict.get(arte["categoria_id"], "-"),
                         )
-                        cE.download_button(
+                        cG.download_button(
                             "📋", data=ficha_pdf, key=f"ficha_{arte['id']}",
                             file_name=f"ficha_pedido_{arte['id']}.pdf", mime="application/pdf",
                             help="Baixar ficha de pedido desta arte",
