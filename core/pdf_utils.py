@@ -1,5 +1,6 @@
 """Geração de relatórios e cupons em PDF e TXT."""
 
+import textwrap
 from fpdf import FPDF
 from datetime import datetime
 from core.sheets import read_df
@@ -14,6 +15,27 @@ def _cliente_nome(cliente_id: int) -> str:
 
 def _fmt(v):
     return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _safe_text(text) -> str:
+    """Remove caracteres que a fonte padrão (latin-1) não consegue desenhar,
+    evitando que textos com emojis/símbolos quebrem a geração do PDF."""
+    text = "" if text is None else str(text)
+    return text.encode("latin-1", errors="replace").decode("latin-1")
+
+
+def _multi_line(pdf, text, line_height=5, max_chars=95):
+    """Escreve texto em várias linhas manualmente (em vez de multi_cell),
+    evitando o erro do fpdf2 quando encontra palavras muito longas ou
+    caracteres que não cabem na largura calculada internamente."""
+    text = _safe_text(text)
+    if not text.strip():
+        pdf.cell(0, line_height, "", ln=True)
+        return
+    for paragrafo in text.split("\n") or [""]:
+        linhas = textwrap.wrap(paragrafo, width=max_chars, break_long_words=True) or [""]
+        for linha in linhas:
+            pdf.cell(0, line_height, linha, ln=True)
 
 
 class BasePDF(FPDF):
@@ -45,7 +67,7 @@ def gerar_cupom_pdf(cliente_id: int, tipo: str = "simples") -> bytes:
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 13)
     pdf.set_text_color(20, 20, 20)
-    pdf.cell(0, 8, f"Cupom {'Completo' if tipo=='completo' else 'Simples'} - {nome}", ln=True)
+    pdf.cell(0, 8, _safe_text(f"Cupom {'Completo' if tipo=='completo' else 'Simples'} - {nome}"), ln=True)
     pdf.ln(2)
 
     pdf.set_font("Helvetica", "", 11)
@@ -62,7 +84,7 @@ def gerar_cupom_pdf(cliente_id: int, tipo: str = "simples") -> bytes:
     pdf.set_font("Helvetica", "", 10)
     for _, r in artes_c.iterrows():
         cat_nome = categorias.get(r.get("categoria_id"), "Sem categoria")
-        pdf.cell(0, 6, f"- {r.get('descricao','')} [{cat_nome}] : {_fmt(r.get('valor',0.0))}", ln=True)
+        _multi_line(pdf, f"- {r.get('descricao','')} [{cat_nome}] : {_fmt(r.get('valor',0.0))}", line_height=6)
 
     if tipo == "completo":
         pdf.ln(4)
@@ -74,7 +96,7 @@ def gerar_cupom_pdf(cliente_id: int, tipo: str = "simples") -> bytes:
             linha = f"[{r['data']} {r['hora']}] {r['tipo']}: {r['descricao']} - {_fmt(r['valor'])}"
             if r["forma_pagamento"]:
                 linha += f" ({r['forma_pagamento']})"
-            pdf.multi_cell(0, 5, linha)
+            _multi_line(pdf, linha, line_height=5)
 
     return bytes(pdf.output())
 
@@ -87,7 +109,7 @@ def gerar_relatorio_pdf(cliente_id: int) -> bytes:
     pdf = BasePDF()
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(0, 8, f"Relatório de Movimentações - {nome}", ln=True)
+    pdf.cell(0, 8, _safe_text(f"Relatório de Movimentações - {nome}"), ln=True)
     pdf.ln(2)
     pdf.set_font("Helvetica", "", 11)
     pdf.cell(0, 7, f"Total vendido: {_fmt(totais['total_vendido'])}   |   Pago: {_fmt(totais['total_pago'])}   |   Descontos: {_fmt(totais['total_desconto'])}", ln=True)
@@ -105,12 +127,12 @@ def gerar_relatorio_pdf(cliente_id: int) -> bytes:
 
     pdf.set_font("Helvetica", "", 9)
     for _, r in mov.iterrows():
-        pdf.cell(35, 6, str(r["data"]), border=1)
-        pdf.cell(20, 6, str(r["hora"]), border=1)
-        pdf.cell(30, 6, str(r["tipo"]), border=1)
-        pdf.cell(70, 6, str(r["descricao"])[:38], border=1)
+        pdf.cell(35, 6, _safe_text(r["data"]), border=1)
+        pdf.cell(20, 6, _safe_text(r["hora"]), border=1)
+        pdf.cell(30, 6, _safe_text(r["tipo"]), border=1)
+        pdf.cell(70, 6, _safe_text(str(r["descricao"])[:38]), border=1)
         pdf.cell(25, 6, _fmt(r["valor"]), border=1)
-        pdf.cell(0, 6, str(r["forma_pagamento"]), border=1, ln=True)
+        pdf.cell(0, 6, _safe_text(r["forma_pagamento"]), border=1, ln=True)
 
     return bytes(pdf.output())
 
