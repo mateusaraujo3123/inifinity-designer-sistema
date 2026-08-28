@@ -4,12 +4,13 @@ SHEETS = {
     "Clientes": ["id", "nome", "contato", "observacoes", "data_cadastro"],
     "Categorias": ["id", "nome"],
     "Programas": ["id", "nome"],
-    "Projetos": ["id", "cliente_id", "nome_projeto", "descricao", "data_criacao"],
+    "Projetos": ["id", "cliente_id", "nome_projeto", "descricao", "data_criacao", "finalizado"],
     "Artes": [
         "id", "projeto_id", "cliente_id", "categoria_id",
         "descricao", "valor", "data", "hora",
         # colunas novas ficam no final para não desalinhar dados já existentes
         "programas", "prazo_entrega", "anotacoes",
+        "entregue", "desistencia",
     ],
     "Pagamentos": [
         "id", "cliente_id", "projeto_id", "valor",
