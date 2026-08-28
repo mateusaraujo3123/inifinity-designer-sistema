@@ -3,6 +3,7 @@
 import textwrap
 from fpdf import FPDF
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from core.sheets import read_df
 from core.reports import cliente_totais, movimentacoes_cliente
 
@@ -45,7 +46,7 @@ class BasePDF(FPDF):
         self.cell(0, 10, "Infinity Designer", ln=True, align="C")
         self.set_font("Helvetica", "", 10)
         self.set_text_color(90, 90, 90)
-        self.cell(0, 6, datetime.now().strftime("Gerado em %d/%m/%Y às %H:%M"), ln=True, align="C")
+        self.cell(0, 6, datetime.now(ZoneInfo("America/Recife")).strftime("Gerado em %d/%m/%Y às %H:%M"), ln=True, align="C")
         self.ln(4)
 
     def footer(self):
@@ -145,7 +146,7 @@ def gerar_relatorio_txt(cliente_id: int) -> str:
     linhas = [
         "=== INFINITY DESIGNER - RELATÓRIO DE MOVIMENTAÇÕES ===",
         f"Cliente: {nome}",
-        f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+        f"Gerado em: {datetime.now(ZoneInfo('America/Recife')).strftime('%d/%m/%Y %H:%M')}",
         "",
         f"Total vendido: {_fmt(totais['total_vendido'])}",
         f"Total pago: {_fmt(totais['total_pago'])}",
