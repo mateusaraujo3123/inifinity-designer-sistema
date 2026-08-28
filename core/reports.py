@@ -101,15 +101,23 @@ def movimentacoes_cliente(cliente_id: int) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
+_FREQ_MAP = {"D": "D", "W": "W", "M": "ME", "Y": "YE"}
+
+
 def financas_periodo(periodo: str) -> pd.DataFrame:
     """periodo: 'D' diario, 'W' semanal, 'M' mensal, 'Y' anual.
     Retorna série agregada de vendas e pagamentos ao longo do tempo."""
-    artes = _to_datetime(read_df("Artes"))
-    pagamentos = _to_datetime(read_df("Pagamentos"))
+    freq = _FREQ_MAP.get(periodo, periodo)
+    artes = _to_datetime(read_df("Artes")).dropna(subset=["_dt"])
+    pagamentos = _to_datetime(read_df("Pagamentos")).dropna(subset=["_dt"])
 
-    vendas = artes.dropna(subset=["_dt"]).set_index("_dt")["valor"].resample(periodo).sum() if not artes.empty else pd.Series(dtype=float)
-    pagos = pagamentos.dropna(subset=["_dt"]).set_index("_dt")["valor"].resample(periodo).sum() if not pagamentos.empty else pd.Series(dtype=float)
+    if artes.empty and pagamentos.empty:
+        return pd.DataFrame(columns=["periodo", "vendas", "pagamentos"])
+
+    vendas = artes.set_index("_dt")["valor"].resample(freq).sum() if not artes.empty else pd.Series(dtype=float)
+    pagos = pagamentos.set_index("_dt")["valor"].resample(freq).sum() if not pagamentos.empty else pd.Series(dtype=float)
 
     out = pd.DataFrame({"vendas": vendas, "pagamentos": pagos}).fillna(0.0)
-    out = out.reset_index().rename(columns={"_dt": "periodo"})
+    out.index.name = "periodo"
+    out = out.reset_index()
     return out
