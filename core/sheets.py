@@ -130,3 +130,30 @@ def now_data_hora():
 
 def clear_cache():
     st.cache_data.clear()
+
+
+def get_config() -> dict:
+    """Lê os valores base do usuário (salário desejado, computador, custos, horas).
+    Se ainda não configurado, devolve os valores padrão sugeridos."""
+    from core.models import CONFIG_PADRAO
+    df = read_df("Configuracoes")
+    if df.empty:
+        return dict(CONFIG_PADRAO)
+    row = df.iloc[0]
+    cfg = dict(CONFIG_PADRAO)
+    for k in CONFIG_PADRAO:
+        try:
+            cfg[k] = float(row.get(k, CONFIG_PADRAO[k]))
+        except (ValueError, TypeError):
+            pass
+    return cfg
+
+
+def save_config(cfg: dict):
+    df = read_df("Configuracoes")
+    row = {"id": 1, **cfg}
+    if df.empty:
+        append_row("Configuracoes", row)
+    else:
+        update_row("Configuracoes", 1, row)
+    clear_cache()
