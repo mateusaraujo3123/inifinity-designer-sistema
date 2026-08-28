@@ -171,15 +171,14 @@ def ensure_worksheets(sh):
                 )
 
 
+@st.cache_resource(show_spinner=False)
 def _worksheet(sheet_name: str):
-
     sh = get_spreadsheet()
-
     return sh.worksheet(sheet_name)
 
 
+@st.cache_data(ttl=20, show_spinner=False)
 def read_df(sheet_name: str) -> pd.DataFrame:
-
     ws = _worksheet(sheet_name)
 
     records = ws.get_all_records()
