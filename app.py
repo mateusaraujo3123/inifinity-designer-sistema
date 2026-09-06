@@ -10,7 +10,7 @@ injetar_icone_home_screen(
     url_icone_180="https://raw.githubusercontent.com/mateusaraujo3123/inifinity-designer-sistema/refs/heads/main/assets/ICONE%20IPHONE.png",
 )
 
-st.title("✨ Infinity Designer")
+st.title("🖥️ Infinity Designer")
 st.caption("Painel geral de clientes, projetos e finanças")
 
 try:
