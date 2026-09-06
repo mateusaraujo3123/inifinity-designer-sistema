@@ -2,8 +2,13 @@ import streamlit as st
 import plotly.graph_objects as go
 
 from core.reports import geral_totais, financas_periodo
+from core.icone_pwa import injetar_icone_home_screen
 
 st.set_page_config(page_title="Infinity Designer", page_icon="✨", layout="wide")
+injetar_icone_home_screen(
+    url_icone_192="https://SEU-LINK-AQUI/icon-192.png",
+    url_icone_180="https://SEU-LINK-AQUI/icon-180.png",
+)
 
 st.title("✨ Infinity Designer")
 st.caption("Painel geral de clientes, projetos e finanças")
