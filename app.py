@@ -4,13 +4,10 @@ import plotly.graph_objects as go
 from core.reports import geral_totais, financas_periodo
 from core.icone_pwa import injetar_icone_home_screen
 
-st.set_page_config(page_title="Infinity Designer", page_icon="🖥️", layout="wide")
-injetar_icone_home_screen(
-    url_icone_192="https://raw.githubusercontent.com/mateusaraujo3123/inifinity-designer-sistema/refs/heads/main/assets/icone%20android.png",
-    url_icone_180="https://raw.githubusercontent.com/mateusaraujo3123/inifinity-designer-sistema/refs/heads/main/assets/ICONE%20IPHONE.png",
-)
+st.set_page_config(page_title="Infinity Designer", page_icon="✨", layout="wide")
+injetar_icone_home_screen()
 
-st.title("🖥️ Infinity Designer")
+st.title("✨ Infinity Designer")
 st.caption("Painel geral de clientes, projetos e finanças")
 
 try:

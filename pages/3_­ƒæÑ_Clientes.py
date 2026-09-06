@@ -1,4 +1,5 @@
 import streamlit as st
+from core.icone_pwa import injetar_icone_home_screen
 import plotly.graph_objects as go
 
 from core.sheets import read_df, append_row, update_row, delete_row, next_id, now_data_hora, clear_cache
@@ -7,6 +8,7 @@ from core.reports import cliente_totais, movimentacoes_cliente
 from core.pdf_utils import gerar_cupom_pdf, gerar_relatorio_pdf, gerar_relatorio_txt, gerar_ficha_pedido_pdf
 
 st.set_page_config(page_title="Clientes - Infinity Designer", page_icon="👥", layout="wide")
+injetar_icone_home_screen()
 st.title("👥 Clientes")
 
 clientes = read_df("Clientes")

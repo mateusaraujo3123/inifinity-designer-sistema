@@ -1,9 +1,11 @@
 import streamlit as st
+from core.icone_pwa import injetar_icone_home_screen
 from core.sheets import read_df, get_config, save_config, append_row, next_id, now_data_hora, clear_cache
 from core.orcamento import calcular_valor_hora, calcular_pacote
 from core.pdf_utils import gerar_orcamento_pdf_cliente, gerar_orcamento_pdf_interno
 
 st.set_page_config(page_title="Orçamento - Infinity Designer", page_icon="🧮", layout="wide")
+injetar_icone_home_screen()
 st.title("🧮 Orçamento")
 
 cfg = get_config()

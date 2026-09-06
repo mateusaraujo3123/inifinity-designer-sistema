@@ -1,21 +1,32 @@
 import streamlit.components.v1 as components
 
-def injetar_icone_home_screen(url_icone_192: str, url_icone_180: str):
+def injetar_icone_home_screen():
     """Injeta os ícones que o iOS/Android usam ao 'Adicionar à Tela de Início'.
-    As URLs precisam ser públicas (ex: link direto de uma imagem no GitHub)."""
-    components.html(f"""
+    Usa arquivos hospedados na própria aplicação (pasta /static), evitando
+    problemas de origem cruzada. Chame isso no topo de CADA página, já que
+    a navegação entre páginas do Streamlit recarrega o <head>."""
+    components.html("""
     <script>
-    var head = window.parent.document.getElementsByTagName('head')[0];
+    (function() {
+        function injetar(doc) {
+            if (!doc || doc.querySelector('link[rel="apple-touch-icon"]')) return;
+            var head = doc.getElementsByTagName('head')[0];
+            if (!head) return;
 
-    var appleIcon = document.createElement('link');
-    appleIcon.rel = 'apple-touch-icon';
-    appleIcon.href = '{url_icone_180}';
-    head.appendChild(appleIcon);
+            var appleIcon = doc.createElement('link');
+            appleIcon.rel = 'apple-touch-icon';
+            appleIcon.href = './app/static/icon-180.png';
+            head.appendChild(appleIcon);
 
-    var androidIcon = document.createElement('link');
-    androidIcon.rel = 'icon';
-    androidIcon.sizes = '192x192';
-    androidIcon.href = '{url_icone_192}';
-    head.appendChild(androidIcon);
+            var androidIcon = doc.createElement('link');
+            androidIcon.rel = 'icon';
+            androidIcon.sizes = '192x192';
+            androidIcon.href = './app/static/icon-192.png';
+            head.appendChild(androidIcon);
+        }
+        try { injetar(window.parent.document); } catch (e) {}
+        try { injetar(window.top.document); } catch (e) {}
+    })();
     </script>
     """, height=0)
+

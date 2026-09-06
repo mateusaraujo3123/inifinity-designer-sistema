@@ -1,9 +1,11 @@
 import streamlit as st
+from core.icone_pwa import injetar_icone_home_screen
 from core.sheets import read_df
 from core.reports import cliente_totais
 from core.pdf_utils import gerar_relatorio_pdf, gerar_relatorio_txt
 
 st.set_page_config(page_title="Relatórios - Infinity Designer", page_icon="📄", layout="wide")
+injetar_icone_home_screen()
 st.title("📄 Relatórios Gerais")
 
 clientes = read_df("Clientes")

@@ -1,7 +1,9 @@
 import streamlit as st
+from core.icone_pwa import injetar_icone_home_screen
 from core.sheets import read_df, append_row, update_row, delete_row, next_id, clear_cache
 
 st.set_page_config(page_title="Categorias - Infinity Designer", page_icon="🏷️", layout="wide")
+injetar_icone_home_screen()
 st.title("🏷️ Categorias de Arte")
 st.caption("Cadastre quantas categorias quiser (ex: Motion, Identidade Visual, Logos...)")
 
@@ -12,7 +14,7 @@ with st.form("nova_categoria", clear_on_submit=True):
     submitted = st.form_submit_button("Adicionar categoria")
     if submitted and nome.strip():
         append_row("Categorias", {"id": next_id(categorias), "nome": nome.strip()})
-        clear_cache()
+        clear_cache("Categorias")
         st.success(f"Categoria '{nome}' adicionada!")
         st.rerun()
 
@@ -29,9 +31,9 @@ else:
         if novo_nome != row["nome"]:
             if c2.button("Salvar", key=f"save_{row['id']}"):
                 update_row("Categorias", row["id"], {"nome": novo_nome})
-                clear_cache()
+                clear_cache("Categorias")
                 st.rerun()
         if c3.button("🗑️ Excluir", key=f"del_{row['id']}"):
             delete_row("Categorias", row["id"])
-            clear_cache()
+            clear_cache("Categorias")
             st.rerun()

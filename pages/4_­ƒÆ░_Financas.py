@@ -1,9 +1,11 @@
 import streamlit as st
+from core.icone_pwa import injetar_icone_home_screen
 import plotly.graph_objects as go
 
 from core.reports import financas_periodo, geral_totais
 
 st.set_page_config(page_title="Finanças - Infinity Designer", page_icon="💰", layout="wide")
+injetar_icone_home_screen()
 st.title("💰 Painel de Finanças")
 
 totais = geral_totais()
