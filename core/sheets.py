@@ -15,7 +15,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-CACHE_TTL_SEGUNDOS = 45
+CACHE_TTL_SEGUNDOS = 90
 
 
 @st.cache_resource(show_spinner=False)
@@ -72,20 +72,46 @@ def _build_df(sheet_name: str) -> pd.DataFrame:
     return df
 
 
+def _parse_values_to_df(sheet_name: str, values: list) -> pd.DataFrame:
+    cols = SHEETS[sheet_name]
+    if not values:
+        return pd.DataFrame(columns=cols)
+    header, *rows = values
+    rows = [r + [""] * (len(header) - len(r)) for r in rows]
+    df = pd.DataFrame(rows, columns=header)
+    df = df.reindex(columns=cols, fill_value="")
+    if "id" in df.columns:
+        df["id"] = pd.to_numeric(df["id"], errors="coerce").astype("Int64")
+    if "valor" in df.columns:
+        df["valor"] = pd.to_numeric(df["valor"], errors="coerce").fillna(0.0)
+    return df
+
+
+def _refresh_all_sheets():
+    """Busca TODAS as abas em uma única chamada à API (batchGet) em vez de
+    uma chamada por aba — é isso que evita estourar a cota de leitura."""
+    sh = get_spreadsheet()
+    nomes = list(SHEETS.keys())
+    resp = sh.values_batch_get(nomes)
+    agora = time.time()
+    value_ranges = resp.get("valueRanges", [])
+    for nome, vr in zip(nomes, value_ranges):
+        df = _parse_values_to_df(nome, vr.get("values", []))
+        st.session_state[f"_df_{nome}"] = df
+        st.session_state[f"_df_ts_{nome}"] = agora
+
+
 def read_df(sheet_name: str) -> pd.DataFrame:
     """Cache manual por aba (guardado na sessão do usuário), válido por
-    CACHE_TTL_SEGUNDOS. Diferente de st.cache_data, permite invalidar só a
-    aba que mudou em vez de limpar tudo a cada pequena edição — essencial
-    para não estourar a cota de leitura da API do Google a cada clique."""
+    CACHE_TTL_SEGUNDOS. Quando expira, atualiza TODAS as abas de uma vez
+    (uma única chamada à API) em vez de uma leitura por aba."""
     cache_key = f"_df_{sheet_name}"
     ts_key = f"_df_ts_{sheet_name}"
     agora = time.time()
     if cache_key in st.session_state and (agora - st.session_state.get(ts_key, 0)) < CACHE_TTL_SEGUNDOS:
         return st.session_state[cache_key]
-    df = _build_df(sheet_name)
-    st.session_state[cache_key] = df
-    st.session_state[ts_key] = agora
-    return df
+    _refresh_all_sheets()
+    return st.session_state.get(cache_key, _build_df(sheet_name))
 
 
 def next_id(df: pd.DataFrame) -> int:
